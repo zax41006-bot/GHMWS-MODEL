@@ -1,0 +1,123 @@
+# import python package
+from datetime import datetime, timedelta
+
+import urllib.request
+import matplotlib.pyplot as plt
+
+import xarray as xr
+from metpy.calc import wind_components
+import metpy.calc as mpcalc
+from metpy.io import metar
+from metpy.plots.declarative import (BarbPlot, ContourPlot, FilledContourPlot, MapPanel,
+                                     PanelContainer, PlotObs)
+
+from metpy.units import units
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import numpy as np
+from metpy.io import metar
+from metpy.cbook import get_test_data
+
+# ========== 基礎時間設定（世界時 UTC） ==========
+run_date = "20260315" # YYYYMMDD UTC
+init = "0000"         # UTC initialization time (0000, 0600, 1200, 1800)
+
+# 轉換為澳門時間 (UTC+8)
+run_date_utc = datetime.strptime(f"{run_date}{init}", "%Y%m%d%H%M")
+run_date_beijing = run_date_utc + timedelta(hours=8)
+
+# ========== 資料來源 URL ==========
+# GFS 0.25 resolution (priority)
+url = f"http://thredds.ucar.edu/thredds/dodsC/grib/NCEP/GFS/Global_0p25deg/GFS_Global_0p25deg_{run_date}_{init}.grib2"
+
+# ========== 讀入資料 ==========
+data = xr.open_dataset(url)
+
+# ========== 選取繪圖範圍 ==========
+# Geographic range: 7-36°N, 100-140°E
+ds = data.metpy.sel(lat=slice(36, 7), lon=slice(100, 140))
+
+# ========== 預報時間設定 ==========
+# Set GFS forecast time (24 hours later)
+plot_time_utc = datetime(2026, 3, 15, 0) + timedelta(hours=24)
+# Convert to Macau local time (UTC+8)
+plot_time_beijing = plot_time_utc + timedelta(hours=8)
+
+# ========== 計算風速 ==========
+# Calculate wind speed at 10m,20m,30m,40m,50m,80m,100m
+ds['wind_speed'] = mpcalc.wind_speed(
+    ds['u-component_of_wind_height_above_ground'],
+    ds['v-component_of_wind_height_above_ground']
+)
+#ds['wind_speed'] = mpcalc.wind_speed(ds['u-component_of_wind_isobaric'],
+#ds['v-component_of_wind_isobaric'])#Calculate wind speed at isobaric levels (1000,975,950,925...hPa), takes ~10 mins to load
+
+# ========== 海平面氣壓 (MSLP) 設定 ==========
+cntr2 = ContourPlot()
+cntr2.data = ds
+cntr2.field = 'MSLP_Eta_model_reduction_msl'
+cntr2.time = plot_time_utc # Use UTC for data reading
+cntr2.contours = list(range(850, 1041, 2)) # Pressure interval 2hPa
+cntr2.linecolor = 'black'
+cntr2.linestyle = 'solid'
+cntr2.linewidth = 1
+cntr2.clabels = True # Show pressure values
+cntr2.plot_units = 'hPa'
+
+# ========== 10米風速填色圖設定 ==========
+cfill = FilledContourPlot()
+cfill.data = ds
+cfill.field = 'wind_speed' 
+cfill.time = plot_time_utc # Use UTC for data reading
+cfill.level = 10 * units.m # 10m height
+cfill.contours = list(range(0, 101, 5)) # 0 to 101 knots, 5 knots interval
+cfill.image_range = (0, 101)
+cfill.colormap = 'gist_ncar' # Colormap
+cfill.colorbar = 'horizontal' # Horizontal colorbar
+cfill.plot_units = 'knots'
+
+# ========== 10米風矢設定 ==========
+barbs = BarbPlot()
+barbs.data = ds
+barbs.time = plot_time_utc # Use UTC for data reading
+barbs.field = ['u-component_of_wind_height_above_ground', 'v-component_of_wind_height_above_ground']
+barbs.level = 10 * units.m
+barbs.skip = (5, 5) # Plot barb every 5 grid points
+barbs.plot_units = 'knots'
+barbs.color = 'red' # Barb color
+
+# ========== 地圖面板設定 ==========
+panel = MapPanel()
+panel.area = [105, 130, 15, 30] # Plot range [West, East, South, North]
+panel.projection = 'mer' # Mercator projection
+panel.layers = ['states', 'coastline', 'borders'] # Map layers
+panel.layers_edgecolor = 'white' # Border color
+
+# 標題設定：英文顯示 + 澳門時間
+panel.title = (
+    f'GHMWS | GFS 0.25° Resolution 10m Wind Speed & Isobars\n'
+    f'Forecast Time: {plot_time_beijing.strftime("%Y-%m-%d %H:00")} CST (Beijing Time) | {plot_time_utc.strftime("%Y-%m-%d %HZ")} UTC\n'
+    f'Init Time: {run_date_beijing.strftime("%Y-%m-%d %H:00")} CST (Beijing Time) | {run_date_utc.strftime("%Y-%m-%d %HZ")} UTC'
+)
+
+panel.plots = [cfill, cntr2, barbs]
+
+# ========== 容器設定 ==========
+pc = PanelContainer()
+pc.size = (12, 12) # Figure size
+pc.panels = [panel]
+
+# ========== 顯示圖表 ==========
+pc.show()
+
+# ========== 新增色標單位標籤 ==========
+# Add colorbar label
+fig = plt.gcf()
+for ax in fig.axes:
+    if hasattr(ax, 'get_children'):
+        for child in ax.get_children():
+            if isinstance(child, plt.cm.ScalarMappable) and hasattr(child, 'colorbar'):
+                cbar = child.colorbar
+                if cbar:
+                    cbar.set_label('10m Wind Speed (knots)', fontsize=12)
+plt.draw()
