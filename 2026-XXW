@@ -1,1 +1,10 @@
+    {"lat": 13.0, "lng": 119.5, "speed": 45, "pressure": 1002, "time": "06月11日02時", "type": "past"},
+    {"lat": 13.2, "lng": 118.8, "speed": 45, "pressure": 1002, "time": "06月11日05時", "type": "past"},
+    {"lat": 13.5, "lng": 118.2, "speed": 55, "pressure": 1000, "time": "06月11日08時", "type": "past"},
+    {"lat": 13.8, "lng": 117.8, "speed": 55, "pressure": 1000, "time": "06月11日11時", "type": "past"},
+    {"lat": 14.0, "lng": 117.5, "speed": 65, "pressure": 998, "time": "06月11日14時", "type": "past"},
+    {"lat": 14.0, "lng": 117.2, "speed": 65, "pressure": 998, "time": "06月11日17時", "type": "current"},
 
+lat：緯度（我地使用北緯爲主），lng：經度（我地使用東經爲主）
+time：MM月DD日XX時
+type：【past:過去，current：現時，forecast：預報】
