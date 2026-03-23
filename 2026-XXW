@@ -5,6 +5,10 @@
     {"lat": 14.0, "lng": 117.5, "speed": 65, "pressure": 998, "time": "06月11日14時", "type": "past"},
     {"lat": 14.0, "lng": 117.2, "speed": 65, "pressure": 998, "time": "06月11日17時", "type": "current"},
 
+    {"lat": 14.0, "lng": 116.0, "speed": 65, "pressure": 998, "time": "06月12日05時", "type": "forecast", "hours": 12},
+
+預報時間：12/24/36/48/60/72/96/120
+
 lat：緯度（我地使用北緯爲主），lng：經度（我地使用東經爲主）
 time：MM月DD日XX時
 type：【past:過去，current：現時，forecast：預報】
